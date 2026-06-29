@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoTimelapse AI - Context-Aware Global Terminal</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        /* Target Aesthetic: Deep Space with Shimmering Kinetic Stars */
+        body {
+            background-color: #000000 !important;
+            background-image: 
+                radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.85) 1px, transparent 1px),
+                radial-gradient(circle at 70% 35%, rgba(255, 255, 255, 0.9) 1.5px, transparent 1.5px),
+                radial-gradient(circle at 35% 75%, rgba(255, 255, 255, 0.75) 1px, transparent 1px),
+                radial-gradient(circle at 85% 15%, rgba(255, 255, 255, 0.8) 1.2px, transparent 1.2px),
+                radial-gradient(circle at 12% 65%, rgba(255, 255, 255, 0.7) 2px, transparent 2px),
+                radial-gradient(circle at 55% 85%, rgba(255, 255, 255, 0.8) 1px, transparent 1px);
+            background-size: 550px 550px;
+            animation: spaceShimmer 10s infinite alternate ease-in-out;
+            position: relative;
+        }
+
+        @keyframes spaceShimmer {
+            0% { opacity: 0.95; background-position: 0px 0px; }
+            100% { opacity: 0.8; background-position: 25px 40px; }
+        }
+        
+        /* Smaller Component Containers: Opaque RGB(42, 0, 70) to fully block background star artifacts */
+        .custom-card {
+            background-color: rgb(42, 0, 70) !important;
+            border: 1px solid rgba(147, 51, 234, 0.35);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.9);
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Map Rendering Canvas Layer Fixes */
+        .leaflet-container { 
+            background: #140028 !important; 
+        }
+        
+        .leaflet-tile-container img {
+            filter: invert(0.88) sepia(0.9) hue-rotate(220deg) brightness(0.5) saturate(2.5) contrast(1.2) !important;
+        }
+        
+        .leaflet-bar a { 
+            background-color: rgb(42, 0, 70) !important; 
+            color: #e9d5ff !important; 
+            border-color: rgba(147, 51, 234, 0.5) !important; 
+        }
+
+        /* Custom UI Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgb(15, 0, 30); }
+        ::-webkit-scrollbar-thumb { background: #9333ea; border-radius: 8px; }
+        ::-webkit-scrollbar-thumb:hover { background: #c084fc; }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen font-sans selection:bg-purple-600 selection:text-white antialiased">
+
+    <header class="border-b border-purple-950 bg-black/80 sticky top-0 z-[1000] px-6 py-4 shadow-2xl">
+        <div class="max-w-full mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3.5">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-purple-600 via-fuchsia-500 to-indigo-600 flex items-center justify-center text-xl shadow-lg shadow-purple-500/30">
+                    ⚛️
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight bg-gradient-to-r from-purple-200 via-fuchsia-100 to-indigo-200 bg-clip-text text-transparent">
+                        EcoTimelapse AI
+                    </h1>
+                    <p class="text-[11px] font-mono tracking-widest text-purple-300/80 uppercase">Context-Validated Planetary Risk Simulator</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="sensorMarquee" class="text-[11px] font-mono bg-black/60 border border-purple-500/30 rounded-lg px-3 py-1.5 text-purple-300 shadow-inner hidden sm:block">
+                    ⚡ STATUS: ENGINE_READY // ECO_VALIDATOR_ACTIVE
+                </div>
+                <div class="px-3 py-1.5 bg-fuchsia-500/20 border border-fuchsia-500/30 text-fuchsia-300 rounded-lg text-xs font-mono font-bold tracking-wider">
+                    v4.0 // Context-Safe
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main id="dashboardPrintArea" class="max-w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start transition-all duration-300">
+        
+        <div class="lg:col-span-3 space-y-6" data-html2pdf-ignore="true">
+            <div class="custom-card rounded-2xl p-5 shadow-2xl">
+                <h2 class="text-xs font-bold text-purple-300 mb-4 flex items-center gap-2.5 tracking-widest uppercase">
+                    <span class="p-1.5 bg-purple-500/20 rounded-lg text-xs">📡</span> 1. Configuration Core
+                </h2>
+                <form id="timelapseForm" class="space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-purple-300 uppercase tracking-widest mb-2">Target Location Search</label>
+                        <input type="text" id="locationInput" value="Sahara Desert" placeholder="Enter city, country, or biome..." class="w-full bg-black/60 border border-purple-900/60 rounded-xl p-3 text-sm focus:outline-none focus:border-purple-500 text-white font-medium transition-all shadow-inner" required />
+                        
+                        <div class="mt-2.5 flex flex-wrap gap-1.5">
+                            <button type="button" onclick="setHotspot('Greenland')" class="text-[10px] font-mono bg-black/50 hover:bg-purple-500/40 hover:text-purple-200 text-purple-300 px-2.5 py-1.5 rounded-md border border-purple-900/50 transition-all cursor-pointer">Glacier Zone</button>
+                            <button type="button" onclick="setHotspot('Sahara Desert')" class="text-[10px] font-mono bg-black/50 hover:bg-purple-500/40 hover:text-purple-200 text-purple-300 px-2.5 py-1.5 rounded-md border border-purple-900/50 transition-all cursor-pointer">Arid Zone</button>
+                            <button type="button" onclick="setHotspot('Amazon Basin')" class="text-[10px] font-mono bg-black/50 hover:bg-purple-500/40 hover:text-purple-200 text-purple-300 px-2.5 py-1.5 rounded-md border border-purple-900/50 transition-all cursor-pointer">Forest Zone</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-purple-300 uppercase tracking-widest mb-2">Simulation Indicator Parameter</label>
+                        <select id="featureSelect" name="feature" class="w-full bg-black/50 border border-purple-900/60 rounded-xl p-3 text-sm focus:outline-none focus:border-purple-500 text-white transition-all shadow-inner">
+                            <option value="glaciers">Glaciers & Ice Cover Sheets</option>
+                            <option value="forests">Forest Canopy & Native Vegetation</option>
+                            <option value="ocean_levels">Ocean Basins & Coastal Flow Lines</option>
+                            <option value="wildfires">Wildfire Threat & Fuel Load Burn Vectors</option>
+                            <option value="desertification">Desertification & Arid Soil Expansion</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-purple-300 uppercase tracking-widest mb-2">Simulation Year</label>
+                            <select id="dateSelect" name="date" class="w-full bg-black/50 border border-purple-900/60 rounded-xl p-2.5 text-sm focus:outline-none focus:border-purple-500 text-white transition-all shadow-inner">
+                                <option value="1970">1970</option>
+                                <option value="1990">1990</option>
+                                <option value="2010">2010</option>
+                                <option value="2026" selected>2026</option>
+                                <option value="2040">2040</option>
+                                <option value="2070">2070</option>
+                                <option value="2100">2100</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-purple-300 uppercase tracking-widest mb-2">Policy Path</label>
+                            <select id="pathwaySelect" name="pathway" class="w-full bg-black/50 border border-purple-900/60 rounded-xl p-2.5 text-sm focus:outline-none focus:border-purple-500 text-white transition-all shadow-inner">
+                                <option value="business_as_usual">B.A.U.</option>
+                                <option value="aggressive_mitigation">Paris Accord</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btnRun" class="w-full mt-2 bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold py-3.5 px-4 rounded-xl text-xs tracking-widest uppercase transition-all shadow-lg active:scale-[0.98] cursor-pointer border border-purple-400/20">
+                        Verify Logic & Execute Simulation →
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-6 flex flex-col">
+            
+            <div class="custom-card rounded-2xl p-4 relative overflow-hidden transition-all duration-300 w-full aspect-square flex flex-col shadow-2xl">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-purple-300 flex items-center gap-2">
+                        <span class="h-2 w-2 rounded-full bg-fuchsia-400 shadow-glow animate-pulse"></span>
+                        Planetary Visual Telemetry Grid Array
+                    </h3>
+                    <div id="animationBadge" class="hidden px-2.5 py-1 bg-rose-500/20 border border-rose-500/30 text-rose-400 rounded-md text-[9px] font-mono font-bold animate-pulse tracking-widest uppercase">
+                        Running Verification Check Loops...
+                    </div>
+                </div>
+
+                <div class="w-full flex-1 bg-purple-950/40 rounded-xl border border-purple-900/60 overflow-hidden relative z-10 min-h-0">
+                    <div id="map" class="w-full h-full"></div>
+                    
+                    <div id="mismatchBanner" class="hidden absolute top-4 left-4 right-4 bg-amber-500/95 text-slate-950 p-3.5 rounded-xl text-xs font-extrabold z-[1001] shadow-2xl flex items-center gap-2.5 animate-fade-in backdrop-blur-md">
+                        <span>⚠️</span> <span id="mismatchText">Biophysical parameter mismatch detected. Redrawing layer indicators...</span>
+                    </div>
+                    
+                    <div class="absolute bottom-4 left-4 bg-black/90 border border-purple-500/40 p-3.5 rounded-xl text-[10px] font-mono space-y-1.5 shadow-2xl min-w-[210px] z-[1000]">
+                        <div class="text-purple-400 border-b border-purple-900/60 pb-1 mb-1.5 font-bold tracking-widest">HUD RUN MATRIX</div>
+                        <div><span class="text-slate-400">Target Core:</span> <span id="lblLocation" class="text-white font-bold">Sahara Desert</span></div>
+                        <div><span class="text-slate-400">Target Feature:</span> <span id="lblFeature" class="text-fuchsia-400 font-bold">GLACIERS</span></div>
+                        <div><span class="text-slate-400">Timeline Bound:</span> <span id="lblDate" class="text-cyan-400 font-bold">2026</span></div>
+                        <div><span class="text-slate-400">Scenario Path:</span> <span id="lblPathway" class="text-amber-400 font-bold">BAU_SYSTEM</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="custom-card rounded-xl p-4 text-center border border-purple-900/50 shadow-lg">
+                    <div class="text-[9px] font-bold tracking-widest text-purple-300 uppercase mb-1.5">Local Threat Shift</div>
+                    <div id="metricImpact" class="text-xl font-black text-fuchsia-400 font-mono">0.0%</div>
+                </div>
+                <div class="custom-card rounded-xl p-4 text-center border border-purple-900/50 shadow-lg">
+                    <div class="text-[9px] font-bold tracking-widest text-purple-300 uppercase mb-1.5">Planetary Variance</div>
+                    <div id="metricSea" class="text-xl font-black text-cyan-400 font-mono">0.00m</div>
+                </div>
+                <div class="custom-card rounded-xl p-4 text-center border border-purple-900/50 shadow-lg">
+                    <div class="text-[9px] font-bold tracking-widest text-purple-300 uppercase mb-1.5">Carbon Threshold</div>
+                    <div id="metricCarbon" class="text-xl font-black text-amber-400 font-mono">420 ppm</div>
+                </div>
+                <div class="custom-card rounded-xl p-4 text-center border border-purple-900/50 shadow-lg">
+                    <div class="text-[9px] font-bold tracking-widest text-purple-300 uppercase mb-1.5">Ecosystem Index</div>
+                    <div id="metricEco" class="text-xl font-black text-purple-400 font-mono">1.00</div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="lg:col-span-4 space-y-6">
+            
+            <div class="custom-card rounded-2xl p-5 shadow-2xl" data-html2pdf-ignore="true">
+                <h2 class="text-xs font-bold text-fuchsia-400 mb-4 flex items-center gap-2.5 tracking-widest uppercase">
+                    <span class="p-1.5 bg-fuchsia-500/20 rounded-lg text-xs">💡</span> 2. Strategic Policy Core
+                </h2>
+                <form id="advisorForm" class="space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-purple-300 uppercase tracking-widest mb-2">Threat Mitigation Target</label>
+                        <select id="crisisSelect" name="crisis" class="w-full bg-black/50 border border-purple-900/60 rounded-xl p-3 text-sm focus:outline-none focus:border-fuchsia-500 text-white transition-all shadow-inner">
+                            <option value="deforestation">Deforestation & Habitat Breakdown</option>
+                            <option value="ice_melt">Cryosphere Glacial Recession</option>
+                            <option value="desertification">Aridity Expansion & Topsoil Degradation</option>
+                            <option value="extreme_weather">Grid Hardening & Extreme Storm Patterns</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" id="btnAdvise" class="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 text-white font-bold py-3.5 px-4 rounded-xl text-xs tracking-widest uppercase transition-all shadow-md active:scale-[0.98] cursor-pointer border border-fuchsia-400/20">
+                        Query Recovery Blueprint
+                    </button>
+                </form>
+            </div>
+
+            <div class="custom-card rounded-2xl p-5 shadow-2xl">
+                <h2 class="text-xs font-bold text-amber-400 mb-3 flex items-center gap-2.5 tracking-widest uppercase">
+                    <span class="p-1.5 bg-amber-500/20 rounded-lg text-xs">🛰️</span> Receptor Baseline Sync
+                </h2>
+                <button id="btnFetchLive" type="button" class="w-full bg-black/50 border border-purple-900/60 hover:bg-purple-950/40 text-purple-200 py-3 px-3 rounded-xl text-xs font-mono font-bold tracking-wider transition-all cursor-pointer shadow-sm">
+                    Sync Live Weather Receptor
+                </button>
+                <div id="liveDataDisplay" class="hidden mt-3 p-3.5 bg-black/60 border border-amber-500/20 rounded-xl text-xs text-amber-300 font-mono space-y-2 shadow-inner">
+                    <div class="flex justify-between"><span class="text-purple-300/60">Latitude Coordinate:</span> <span id="liveLat" class="text-slate-200 font-bold">0.00</span></div>
+                    <div class="flex justify-between"><span class="text-purple-300/60">Longitude Coordinate:</span> <span id="liveLon" class="text-slate-200 font-bold">0.00</span></div>
+                    <div class="flex justify-between"><span class="text-purple-300/60">Target Temp Vector:</span> <span><span id="liveTemp" class="text-fuchsia-400 font-bold">--</span>°C</span></div>
+                </div>
+            </div>
+
+            <div class="custom-card rounded-2xl p-5 shadow-2xl relative">
+                <div class="border-b border-purple-900/50 pb-3 mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-purple-300 flex items-center gap-2">
+                        <span class="h-2 w-2 rounded-full bg-fuchsia-400 shadow-glow animate-ping"></span>
+                        AI Prediction Synthesizer
+                    </h3>
+                    <button id="btnDownloadPDF" class="w-full sm:w-auto px-3.5 py-1.5 bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-600 hover:to-fuchsia-600 text-white font-extrabold rounded-lg text-xs tracking-wider transition-all shadow-md cursor-pointer border border-purple-400/20" data-html2pdf-ignore="true">
+                        📥 Export PDF Report Card
+                    </button>
+                </div>
+                <div id="outputContent" class="text-sm text-purple-100 leading-relaxed min-h-[110px] whitespace-pre-wrap font-sans bg-black/50 p-4 border border-purple-900/50 rounded-xl shadow-inner">Configure parameters and choose your target timeline pathway. The global mapping terminal will systematically isolate the selected ecosystem, verify ecological compatibility variables, and project long-term tracking metrics above.</div>
+            </div>
+
+            <div class="custom-card rounded-2xl p-5 shadow-2xl">
+                <h3 class="text-xs font-bold uppercase tracking-widest text-purple-300 mb-4">
+                    Planetary Sustainability Timeline Forecast (Chart.js Engine)
+                </h3>
+                <div class="w-full h-[190px]">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        let map;
+        let activeOverlay = null;
+        let chartInstance = null;
+
+        const regionalHotspotRegistry = {
+            "amazon basin": { lat: -3.4653, lon: -62.2159 },
+            "sahara desert": { lat: 23.8060, lon: 11.2884 },
+            "greenland": { lat: 72.0000, lon: -40.0000 }
+        };
+
+        // Realistic high-fidelity boundaries mimicking macro-regional geographic shapes from input visuals
+        const hotspotGeometries = {
+            "sahara desert": [
+                [31.6, -13.0], [32.5, -5.0], [33.0, 5.0], [34.5, 12.0], [32.8, 24.0],
+                [31.5, 34.0], [27.0, 34.2], [22.0, 31.5], [15.5, 32.5], [14.0, 24.0],
+                [16.5, 14.0], [15.0, 2.0], [17.0, -8.0], [16.0, -16.5], [22.5, -16.0],
+                [27.2, -12.5], [31.6, -13.0]
+            ],
+            "amazon basin": [
+                [2.0, -51.0], [4.5, -52.0], [8.0, -59.5], [10.5, -62.0], [9.0, -66.0],
+                [7.0, -72.0], [2.5, -76.0], [-1.0, -79.0], [-5.0, -80.5], [-9.5, -79.0],
+                [-13.5, -76.0], [-15.0, -70.0], [-19.0, -64.0], [-15.5, -57.0], [-14.5, -48.0],
+                [-10.0, -45.0], [-7.5, -37.5], [-4.0, -37.0], [-1.5, -43.0], [2.0, -51.0]
+            ],
+            "greenland": [
+                [78.0, -20.0], [81.5, -12.0], [83.5, -30.0], [82.0, -60.0], [77.5, -71.5],
+                [74.0, -69.0], [69.5, -54.0], [64.0, -52.5], [59.8, -44.0], [60.2, -42.5],
+                [63.5, -40.5], [66.0, -36.0], [71.0, -23.0], [75.0, -19.5], [78.0, -20.0]
+            ]
+        };
+
+        function initGlobalMap() {
+            map = L.map('map', {
+                center: [20.0, 0.0],
+                zoom: 2,
+                minZoom: 1.5,
+                maxZoom: 12,
+                zoomControl: true
+            });
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+            }).addTo(map);
+        }
+
+        function updateSensorStatus(msg) {
+            document.getElementById('sensorMarquee').innerText = `⚡ STATUS: ${msg}`;
+        }
+
+        function setHotspot(name) {
+            document.getElementById('locationInput').value = name;
+        }
+
+        // Generates organic multi-point perturbed geographic loops for user-typed custom regions
+        function generateOrganicPolygon(center, baselineSize) {
+            let points = [];
+            let numPoints = 24;
+            for (let i = 0; i < numPoints; i++) {
+                let angle = (i / numPoints) * 2 * Math.PI;
+                let noise = 1.0 + 0.25 * Math.sin(angle * 3) + 0.15 * Math.cos(angle * 5) + 0.08 * Math.sin(angle * 7);
+                let radius = baselineSize * noise;
+                let lat = center[0] + radius * Math.sin(angle) * 0.72;
+                let lon = center[1] + radius * Math.cos(angle);
+                points.push([lat, lon]);
+            }
+            points.push([points[0][0], points[0][1]]);
+            return points;
+        }
+
+        // Transforms structural GeoJSON properties returned via backend server parsing
+        function scaleGeoJSON(geojson, center, factor) {
+            if (!geojson || !geojson.features) return geojson;
+            let cloned = JSON.parse(JSON.stringify(geojson));
+            cloned.features.forEach(f => {
+                if (f.geometry && f.geometry.coordinates) {
+                    if (f.geometry.type === "Polygon") {
+                        f.geometry.coordinates = f.geometry.coordinates.map(ring => {
+                            return ring.map(pt => {
+                                let lon = center[1] + (pt[0] - center[1]) * factor;
+                                let lat = center[0] + (pt[1] - center[0]) * factor;
+                                return [lon, lat];
+                            });
+                        });
+                    } else if (f.geometry.type === "MultiPolygon") {
+                        f.geometry.coordinates = f.geometry.coordinates.map(polygon => {
+                            return polygon.map(ring => {
+                                return ring.map(pt => {
+                                    let lon = center[1] + (pt[0] - center[1]) * factor;
+                                    let lat = center[0] + (pt[1] - center[0]) * factor;
+                                    return [lon, lat];
+                                });
+                            });
+                        });
+                    }
+                }
+            });
+            return cloned;
+        }
+
+        function renderMapEcosystemOverlay(lat, lon, activeFeature, finalImpact, serverGeoJSON) {
+            if (activeOverlay) map.removeLayer(activeOverlay);
+
+            let colorMatrix = {
+                glaciers: '#a855f7',
+                forests: '#22c55e',
+                ocean_levels: '#3b82f6',
+                wildfires: '#f97316',
+                desertification: '#eab308'
+            };
+            let targetedColor = colorMatrix[activeFeature] || '#ef4444';
+
+            // Calculate exact scaling multiplier based on physical expansion or shrinkage rules
+            let scaleFactor = 1.0;
+            if (activeFeature === 'glaciers' || activeFeature === 'forests') {
+                scaleFactor = 1.0 - (0.45 * finalImpact);
+            } else if (activeFeature === 'desertification' || activeFeature === 'wildfires' || activeFeature === 'ocean_levels') {
+                scaleFactor = 1.0 + (0.55 * finalImpact);
+            }
+            scaleFactor = Math.max(0.15, Math.min(2.5, scaleFactor));
+
+            const inputLocation = document.getElementById('locationInput').value.toLowerCase().trim();
+            let center = [lat, lon];
+            let finalCoords = null;
+
+            if (hotspotGeometries[inputLocation]) {
+                let baseCoords = hotspotGeometries[inputLocation];
+                let sumLat = 0, sumLon = 0;
+                baseCoords.forEach(pt => { sumLat += pt[0]; sumLon += pt[1]; });
+                let centroid = [sumLat / baseCoords.length, sumLon / baseCoords.length];
+                
+                finalCoords = baseCoords.map(pt => {
+                    let scaledLat = centroid[0] + (pt[0] - centroid[0]) * scaleFactor;
+                    let scaledLon = centroid[1] + (pt[1] - centroid[1]) * scaleFactor;
+                    return [scaledLat, scaledLon];
+                });
+            } else if (serverGeoJSON && serverGeoJSON.features && serverGeoJSON.features.length > 0) {
+                let scaledGeoJSON = scaleGeoJSON(serverGeoJSON, center, scaleFactor);
+                activeOverlay = L.geoJSON(scaledGeoJSON, {
+                    style: function (feature) {
+                        return {
+                            color: targetedColor,
+                            fillColor: targetedColor,
+                            fillOpacity: 0.55,
+                            weight: 2.5,
+                            smoothFactor: 1.0
+                        };
+                    }
+                }).addTo(map);
+                return;
+            } else {
+                let baselineSize = 4.0;
+                let baseCoords = generateOrganicPolygon(center, baselineSize);
+                finalCoords = baseCoords.map(pt => {
+                    let scaledLat = center[0] + (pt[0] - center[0]) * scaleFactor;
+                    let scaledLon = center[1] + (pt[1] - center[1]) * scaleFactor;
+                    return [scaledLat, scaledLon];
+                });
+            }
+
+            if (finalCoords) {
+                activeOverlay = L.polygon(finalCoords, {
+                    color: targetedColor,
+                    fillColor: targetedColor,
+                    fillOpacity: 0.45,
+                    weight: 2.5
+                }).addTo(map);
+            }
+        }
+
+        function runDynamicHUDCalculators(activeFeature, ratio, pathway) {
+            let pathMod = (pathway === 'aggressive_mitigation') ? 0.35 : 1.15;
+            
+            let threatShift = (ratio * 100 * pathMod).toFixed(1);
+            let varianceVal = (ratio * 2.1 * pathMod).toFixed(2);
+            let carbonPpm = Math.round(420 + (ratio * 290 * pathMod));
+            let ecosystemIdx = Math.max(0.05, Math.min(1.2, 1.0 - (ratio * 0.75 * pathMod))).toFixed(2);
+
+            document.getElementById('metricImpact').innerText = `${threatShift}%`;
+            document.getElementById('metricSea').innerText = `${varianceVal}m`;
+            document.getElementById('metricCarbon').innerText = `${carbonPpm} ppm`;
+            document.getElementById('metricEco').innerText = ecosystemIdx;
+        }
+
+        document.getElementById('timelapseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const inputLocation = document.getElementById('locationInput').value;
+            const requestedFeature = document.getElementById('featureSelect').value;
+            const year = parseInt(document.getElementById('dateSelect').value);
+            const pathway = document.getElementById('pathwaySelect').value;
+
+            const banner = document.getElementById('mismatchBanner');
+            banner.classList.add('hidden');
+
+            document.getElementById('lblLocation').innerText = inputLocation;
+            document.getElementById('lblFeature').innerText = requestedFeature.toUpperCase();
+            document.getElementById('lblDate').innerText = year;
+            document.getElementById('lblPathway').innerText = pathway.toUpperCase().replace('_', ' ');
+
+            document.getElementById('outputContent').innerText = `Compiling true-to-earth GIS border structures for "${inputLocation}"...`;
+            updateSensorStatus("FETCHING_OSM_BOUNDARIES");
+            document.getElementById('animationBadge').classList.remove('hidden');
+
+            try {
+                let lat, lon;
+                const standardKey = inputLocation.toLowerCase().trim();
+
+                if (regionalHotspotRegistry[standardKey]) {
+                    lat = regionalHotspotRegistry[standardKey].lat;
+                    lon = regionalHotspotRegistry[standardKey].lon;
+                } else {
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(inputLocation)}&limit=1`);
+                    const geoData = await geoRes.json();
+
+                    if (geoData.length === 0) {
+                        document.getElementById('outputContent').innerText = `Geocoding Fault: Location "${inputLocation}" could not be mapped inside spatial vector indices.`;
+                        document.getElementById('animationBadge').classList.add('hidden');
+                        updateSensorStatus("GEOLOCATE_FAILED");
+                        return;
+                    }
+                    lat = parseFloat(geoData[0].lat);
+                    lon = parseFloat(geoData[0].lon);
+                }
+
+                map.flyTo([lat, lon], 5, { animate: true, duration: 1.8 });
+                
+                setTimeout(async () => {
+                    try {
+                        const response = await fetch('/api/timelapse', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ location: inputLocation, feature: requestedFeature, year: year.toString(), pathway: pathway })
+                        });
+                        const resData = await response.json();
+
+                        let timelineRatio = (year - 2026) / (2100 - 2026);
+                        let pathModifier = (pathway === 'aggressive_mitigation') ? 0.25 : 1.0;
+                        let netImpact = timelineRatio * pathModifier;
+
+                        let resolvedFeature = resData.resolved_feature;
+                        
+                        if (resData.context_mismatch) {
+                            document.getElementById('mismatchText').innerText = resData.mismatch_message;
+                            banner.classList.remove('hidden');
+                            document.getElementById('lblFeature').innerText = `${resolvedFeature.toUpperCase()} (ADAPTED)`;
+                            updateSensorStatus("ECO_LAYER_ADAPTED");
+                        } else {
+                            updateSensorStatus("ECO_LAYER_VERIFIED");
+                        }
+
+                        renderMapEcosystemOverlay(lat, lon, resolvedFeature, netImpact, resData.real_geojson);
+                        runDynamicHUDCalculators(resolvedFeature, timelineRatio, pathway);
+                        
+                        document.getElementById('outputContent').innerText = resData.output;
+                        updateFutureChart(resolvedFeature, year, pathway);
+
+                    } catch (err) {
+                        document.getElementById('outputContent').innerText = "System Exception: Communication drop during backend validation parsing.";
+                        updateSensorStatus("BACKEND_COMM_CRASH");
+                    }
+                    document.getElementById('animationBadge').classList.add('hidden');
+                }, 1800);
+
+            } catch (err) {
+                document.getElementById('outputContent').innerText = "Network Fault: Could not clear geographical validation routines.";
+                document.getElementById('animationBadge').classList.add('hidden');
+                updateSensorStatus("NETWORK_ERROR");
+            }
+        });
+
+        document.getElementById('advisorForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const crisis = document.getElementById('crisisSelect').value;
+            updateSensorStatus("ADVISOR_DATA_FETCH");
+            document.getElementById('outputContent').innerText = "Fetching contextual mitigation blueprints...";
+
+            try {
+                const response = await fetch('/api/advisor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ crisis: crisis })
+                });
+                const data = await response.json();
+                document.getElementById('outputContent').innerText = data.output;
+                updateSensorStatus("STREAM_SUCCESS");
+            } catch (err) {
+                document.getElementById('outputContent').innerText = "Advisory Link Loss: Could not fetch resource planning profiles.";
+                updateSensorStatus("BACKEND_COMM_CRASH");
+            }
+        });
+
+        document.getElementById('btnFetchLive').addEventListener('click', async () => {
+            const display = document.getElementById('liveDataDisplay');
+            display.classList.remove('hidden');
+            
+            const center = map.getCenter();
+            const lat = center.lat.toFixed(4);
+            const lon = center.lng.toFixed(4);
+
+            document.getElementById('liveLat').innerText = lat;
+            document.getElementById('liveLon').innerText = lon;
+            document.getElementById('liveTemp').innerText = "Syncing...";
+            updateSensorStatus("WEATHER_LAYER_SYNC");
+
+            try {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+                const out = await res.json();
+                if(out.current_weather) {
+                    document.getElementById('liveTemp').innerText = out.current_weather.temperature;
+                    updateSensorStatus("WEATHER_READY");
+                } else {
+                    document.getElementById('liveTemp').innerText = "Err";
+                }
+            } catch (e) {
+                document.getElementById('liveTemp').innerText = "Off";
+            }
+        });
+
+        document.getElementById('btnDownloadPDF').addEventListener('click', () => {
+            const targetedElement = document.getElementById('dashboardPrintArea');
+            updateSensorStatus("PRINTING_POLISHED_PDF");
+            const structureOptions = {
+                margin:       0.2,
+                filename:     'Planetary_Climate_Mitigation_Matrix.pdf',
+                image:        { type: 'jpeg', quality: 0.99 },
+                html2canvas:  { scale: 2, backgroundColor: '#000000', useCORS: true },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+            };
+            html2pdf().set(structureOptions).from(targetedElement).save().then(() => {
+                updateSensorStatus("PDF_EXPORT_SUCCESS");
+            });
+        });
+
+        function updateFutureChart(feature, targetYear, pathway) {
+            const ctxChart = document.getElementById('trendChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            let modifier = (pathway === 'aggressive_mitigation') ? 0.35 : 1.0;
+            let labels = ['1970', '1990', '2010', '2026', '2040', '2070', '2100'];
+            let datasetValues;
+            
+            if (['ocean_levels', 'wildfires', 'desertification'].includes(feature)) {
+                datasetValues = [2, 4, 7, 10, Math.round(10 + (25*modifier)), Math.round(10 + (55*modifier)), Math.round(10 + (85*modifier))];
+            } else {
+                datasetValues = [120, 112, 105, 100, Math.round(100 - (18*modifier)), Math.round(100 - (35*modifier)), Math.round(100 - (60*modifier))];
+            }
+
+            chartInstance = new Chart(ctxChart, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `${feature.toUpperCase()} Metric Area Index`,
+                        data: datasetValues,
+                        borderColor: '#d946ef',
+                        backgroundColor: 'rgba(217, 70, 239, 0.05)',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#22d3ee',
+                        fill: true,
+                        tension: 0.2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#e9d5ff', font: { size: 10, weight: '600' } } } },
+                    scales: {
+                        x: { grid: { color: 'rgba(147, 51, 234, 0.15)' }, ticks: { color: '#c084fc', font: { size: 9 } } },
+                        y: { grid: { color: 'rgba(147, 51, 234, 0.15)' }, ticks: { color: '#c084fc', font: { size: 9 } } }
+                    }
+                }
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initGlobalMap();
+            updateFutureChart('glaciers', 2026, 'business_as_usual');
+        });
+    </script>
+</body>
+</html>
