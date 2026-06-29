@@ -8,8 +8,10 @@ from groq import Groq
 # Map variables from environmental configurations
 load_dotenv()
 
-# Instantiating Flask with relative upwards folder paths to block TemplateNotFound asset losses
-app = Flask(__name__, template_folder='../templates')
+# Resolve the absolute path to the templates folder dynamically to ensure reliable asset lookup on Vercel
+base_dir = os.path.dirname(os.path.abspath(__file__))
+template_dir = os.path.join(base_dir, '../templates')
+app = Flask(__name__, template_folder=template_dir)
 
 # Establish clean Groq validation initialization layers
 groq_api_key = os.environ.get("GROQ_API_KEY")
