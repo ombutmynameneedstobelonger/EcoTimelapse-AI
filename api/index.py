@@ -22,18 +22,16 @@ def fetch_real_geojson_boundary(location, feature):
     Queries the public Overpass API database to retrieve actual geographic boundary 
     polygon coordinates covering real environmental features inside the requested location area.
     """
-    # Map app indicator selections to accurate OpenStreetMap geospatial tags
     feature_tag_mapping = {
         "forests": '["natural"="wood"]',
         "glaciers": '["natural"="glacier"]',
         "desertification": '["natural"="desert"]',
-        "wildfires": '["boundary"="national_park"]',  # Uses high-risk managed preserves as a real proxy
-        "ocean_levels": '["natural"="water"]["water"="lagoon"]' # Isolates sensitive coastal shoreline structures
+        "wildfires": '["boundary"="national_park"]',
+        "ocean_levels": '["natural"="water"]["water"="lagoon"]'
     }
     
     osm_tag = feature_tag_mapping.get(feature, '["natural"="wood"]')
     
-    # Overpass Query Language (QL) block to fetch precise area polygons matching location name context
     query = f"""
     [out:json][timeout:25];
     area["name"~"{location}", i_case]->.searchArea;
@@ -50,18 +48,15 @@ def fetch_real_geojson_boundary(location, feature):
             
         osm_data = response.json()
         
-        # Initialize a standardized GeoJSON FeatureCollection structure
         geojson = {
             "type": "FeatureCollection",
             "features": []
         }
         
-        # Parse OpenStreetMap elements into accurate, true-to-earth GeoJSON Polygons
         for element in osm_data.get('elements', []):
             if 'geometry' in element:
                 coords = [[pt['lon'], pt['lat']] for pt in element['geometry']]
                 
-                # Close the geographic coordinate loop cleanly for Leaflet rendering
                 if coords and coords[0] != coords[-1]:
                     coords.append(coords[0])
                     
@@ -75,7 +70,6 @@ def fetch_real_geojson_boundary(location, feature):
                 }
                 geojson["features"].append(feature_node)
                 
-                # Limit size to prevent browser UI processing locks from massive datasets
                 if len(geojson["features"]) >= 35:
                     break
                     
@@ -100,7 +94,6 @@ def handle_timelapse():
     target_year = data.get('year', '2040')
     pathway = data.get('pathway', 'business_as_usual')
 
-    # Step A: Query Llama-3.3 to execute a validation assessment on the chosen parameters
     validation_system_prompt = (
         "You are a strict biophysical geography validation matrix. "
         "Your task is to analyze if a requested environmental indicator feature makes physical, biological, "
@@ -131,13 +124,11 @@ def handle_timelapse():
         context_mismatch = parsed_val.get("context_mismatch", False)
         mismatch_message = parsed_val.get("mismatch_message", "")
         resolved_feature = parsed_val.get("resolved_feature", feature)
-    except Exception as ex:
+    except Exception:
         resolved_feature = feature
 
-    # Step B: Fetch the true, real-world area boundary vectors for this location 
     real_area_geojson = fetch_real_geojson_boundary(location, resolved_feature)
 
-    # Step C: Generate the long range climate timeline analysis using our verified/adapted feature set
     system_prompt = (
         "You are an advanced planetary ecosystem simulation engine tracking climate risks globally. "
         "Formulate clear, analytical climate forecast metrics based on the active policy scenario. "
@@ -165,7 +156,7 @@ def handle_timelapse():
             "mismatch_message": mismatch_message,
             "resolved_feature": resolved_feature,
             "output": ai_response,
-            "real_geojson": real_area_geojson  # Transmit real Earth coordinates directly to frontend map engine
+            "real_geojson": real_area_geojson
         })
     except Exception as e:
         return jsonify({"output": f"Groq Infrastructure Interruption encountered during runtime simulation loops: {str(e)}"}), 500
