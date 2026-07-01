@@ -1,15 +1,13 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/index.py": {
-      "runtime": "@vercel/python",
       "includeFiles": "templates/**"
     }
   },
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/api/index.py"
+      "destination": "/api/index"
     }
   ]
 }
